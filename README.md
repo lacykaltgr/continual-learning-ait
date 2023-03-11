@@ -21,5 +21,5 @@ inductive biases, applying meta-learning, and so on.
 
 
 # The team
-Székely Anna
+Székely Anna,
 Freund László
