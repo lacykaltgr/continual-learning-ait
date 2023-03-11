@@ -18,3 +18,8 @@ to   increase   performance   during   continual   learning.
 The   engineering principles that might lead to better performance could be freezing weights,
 introducing memory, introducing replay (via a recurrent layer), introducing
 inductive biases, applying meta-learning, and so on.
+
+
+# The team
+Székely Anna
+Freund László
