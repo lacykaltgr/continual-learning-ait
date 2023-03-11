@@ -7,7 +7,7 @@ Humans are great at learning online, and utilize the previously acquired knowled
 In   recent   years many   works   focused   on   understanding   the   nature   of   catastrophic forgetting or continual task learning.   
 Our goal is to understand the architectural principles that can support solving continual learning tasks.
 
-* Thus, we define a convolutional neural network from scratch and train it for image classification.  
+* Thus, we define a convolutional neural network from scratch and train it for general image classification.  
 * Then we split the training data to different tasks, 
 * and train the model on the tasks according to different training regimes (e.g. blocked and interleaved arethe two extremes and intermediate solutions also possible – blocked by 20– 40 – 60 sample batches of 1 task). 
 
