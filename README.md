@@ -3,10 +3,8 @@
 The   goal   of   the   project   is   to   explore   and   understand   the   challenge   that
 continual learning means to modern artificial learning agents. 
 
-Humans are great at learning online, and utilize the previously acquired knowledge in
-novel   tasks,   which   is   not   the   case   for   artificial   agents.   
-In   recent   years many   works   focused   on   understanding   the   nature   of   
-catastrophic forgetting or continual task learning.   
+Humans are great at learning online, and utilize the previously acquired knowledge in novel   tasks,   which   is   not   the   case   for   artificial  agents.   
+In   recent   years many   works   focused   on   understanding   the   nature   of   catastrophic forgetting or continual task learning.   
 Our goal is to understand the architectural principles that can support solving continual learning tasks.
 
 * Thus, we define a convolutional neural network from scratch and train it for image classification.  
