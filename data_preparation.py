@@ -57,7 +57,7 @@ def load_dataset(
                 y_task_train.append(y_train[j]) #[start_class:end_class])
 
         datasets_per_task_train.append(
-            tf.data.Dataset.from_tensor_slices((X_task_train, y_task_train)))
+            np.array([X_task_train, y_task_train]))
 
         for j in range(X_test.shape[0]):
             if y_test[j][start_class:end_class].any():
@@ -65,7 +65,7 @@ def load_dataset(
                 y_task_test.append(y_test[j]) #[start_class:end_class])
 
         datasets_per_task_test.append(
-            tf.data.Dataset.from_tensor_slices((X_task_test, y_task_test)))
+            np.array([X_task_test, y_task_test]))
 
     return datasets_per_task_train, datasets_per_task_test
 
