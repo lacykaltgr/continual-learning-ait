@@ -9,7 +9,7 @@ from copy import deepcopy
 from pydoc import locate
 from classifier import ResNet18, classifier
 from loss import calculate_loss
-from data_loader import CLDataLoader
+from data_preparation import CLDataLoader
 from stable_diffusion.stable_diffusion import StableDiffusion
 
 # Obligatory overhead
