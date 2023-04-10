@@ -1,15 +1,150 @@
 import tensorflow as tf
-import glob
-import tensorflow_datasets as tfds
+import numpy as np
 
 
-train_clear_10_image_paths = glob.glob("clear-10/train_image_only/labeled_images/*/*/*.jpg")
-test_clear_10_image_paths = glob.glob("clear-10/test/labeled_images/*/*/*.jpg")
-train_clear_100_image_paths = glob.glob("clear-100/train_image_only/labeled_images/*/*/*.jpg")
-test_clear_100_image_paths = glob.glob("clear-100/test/labeled_images/*/*/*.jpg")
+class CLDataLoader(object):
+    def __init__(self, datasets_per_task, batch_size, train=True):
+        bs = batch_size if train else 64
+
+        self.datasets = datasets_per_task
+        self.loaders = [
+            tf.data.Dataset.from_tensor_slices(x).shuffle(len(x)).batch(bs).prefetch(tf.data.AUTOTUNE)
+            for x in self.datasets
+        ]
+
+    def __getitem__(self, idx):
+        return self.loaders[idx]
+
+    def __len__(self):
+        return len(self.loaders)
 
 
 
+def load_dataset(
+        dataset,
+        n_classes_first_task=10,
+        n_classes_other_task=5,
+        img_size=32,
+        path=None):
+    if (100 - n_classes_first_task)% n_classes_other_task != 0:
+        print("Wrong definition of task distribution")
+        return None
+
+    if dataset == 'clear-100':
+        (X_train, y_train), (X_test, y_test) = load_clear_100(path, img_size)
+    elif dataset == 'cifar-100':
+        (X_train, y_train), (X_test, y_test) = load_cifar_100()
+    else:
+        print("Wrong dataset name")
+        return None
+
+    datasets_per_task_train = []
+    datasets_per_task_test = []
+    num_tasks = int((100 - n_classes_first_task) / n_classes_other_task) + 1
+
+    for i in range(num_tasks):
+        X_task_train = []
+        y_task_train = []
+        X_task_test = []
+        y_task_test = []
+
+        start_class = n_classes_first_task + (i-1) * n_classes_other_task + 1 if i != 0 else 1
+        end_class = n_classes_first_task + i * n_classes_other_task
+
+        for j in range(X_train.shape[0]):
+            if y_train[j][start_class:end_class].any():
+                X_task_train.append(X_train[j])
+                y_task_train.append(y_train[j]) #[start_class:end_class])
+
+        datasets_per_task_train.append(
+            tf.data.Dataset.from_tensor_slices((X_task_train, y_task_train)))
+
+        for j in range(X_test.shape[0]):
+            if y_test[j][start_class:end_class].any():
+                X_task_test.append(X_test[j])
+                y_task_test.append(y_test[j]) #[start_class:end_class])
+
+        datasets_per_task_test.append(
+            tf.data.Dataset.from_tensor_slices((X_task_test, y_task_test)))
+
+    return datasets_per_task_train, datasets_per_task_test
+
+
+def load_clear_100(path, img_size=32):
+    if path is None: path = "content/drive/MyDrive/clear-dataset/"
+    clear_100_features_path = path + "class-names-100.txt"
+    X_train, y_train = load_from_tfrecord(path + 'train-clear-100.tfrecord', clear_100_features_path, img_size)
+    X_test, y_test = load_from_tfrecord(path + 'test-clear-100.tfrecord', clear_100_features_path, img_size)
+    return (X_train, y_train), (X_test, y_test)
+
+def load_cifar_100():
+    (X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar100.load_data()
+    n_classes = 100
+    X_train = (X_train / 127.5) -1
+    X_test = (X_test / 127.5) -1
+    y_train = tf.keras.utils.to_categorical(y_train, n_classes)
+    y_test = tf.keras.utils.to_categorical(y_test, n_classes)
+    return (X_train, y_train), (X_test, y_test)
+
+
+
+
+# ------------
+# Utilities to load and preprocess the data
+# ------------
+
+
+def feature_encode_table(filepath):
+    vocab = tf.io.read_file(filepath)
+    vocab = tf.strings.split(vocab, sep="\n")
+    vocab_size = tf.shape(vocab)[0]
+
+    table = tf.lookup.StaticHashTable(
+        tf.lookup.KeyValueTensorInitializer(vocab, tf.range(vocab_size)),
+        default_value = -1
+    )
+    return table
+
+def encode_task(task, feature_table):
+    task_indices = feature_table.lookup(task)
+    task_one_hot = tf.one_hot(task_indices, depth=int(feature_table.size()))
+    return task_one_hot
+
+def decode_image(image, img_size=32):
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = (tf.cast(image, tf.float32) / 127.5) - 1
+    image = tf.keras.preprocessing.image.smart_resize(image, [img_size, img_size])
+    return image
+
+
+def read_tfrecord_features(example, tfrecord_format, img_size=32):
+    example = tf.io.parse_single_example(example, tfrecord_format)
+    date = tf.strings.to_number(example['date'], out_type=tf.int32)
+    image = decode_image(example['image_raw'], img_size)
+    return (image, date)
+
+def read_tfrecord_labels(example, feature_table, tfrecord_format):
+    example = tf.io.parse_single_example(example, tfrecord_format)
+    task = encode_task(example['task'], feature_table)
+    return task
+
+def load_from_tfrecord(record_filepath, feature_filepath, img_size=32):
+    tfrecord_format = {
+        "date": tf.io.FixedLenFeature([], tf.string),
+        "task": tf.io.FixedLenFeature([], tf.string),
+        "image_raw": tf.io.FixedLenFeature([], tf.string)
+    }
+    dataset = tf.data.TFRecordDataset(record_filepath)
+    table = feature_encode_table(feature_filepath)
+    X = dataset.map(lambda x: read_tfrecord_features(x, tfrecord_format, img_size))
+    y = dataset.map(lambda x: read_tfrecord_labels(x, table, tfrecord_format))
+    return (X, y)
+
+
+
+#------------
+# Download CLEAR-100 dataset and move to tfrecord format for faster loading
+#------------
 
 def _bytes_feature(value):
     if isinstance(value, type(tf.constant(0))):
@@ -36,67 +171,5 @@ def write_to_tfrecord(image_paths, tfrecord_file_name):
                 tf_example = image_example(image_string, date, task)
                 writer.write(tf_example.SerializeToString())
 
-write_to_tfrecord(train_clear_10_image_paths, 'train-clear-10')
-write_to_tfrecord(test_clear_10_image_paths, 'test-clear-10')
-write_to_tfrecord(train_clear_100_image_paths, 'train-clear-100')
-write_to_tfrecord(test_clear_100_image_paths, 'test-clear-100')
 
 
-
-
-IMAGE_SIZE = [256, 256]
-
-
-def feature_encode_table(filepath):
-    vocab = tf.io.read_file(filepath)
-    vocab = tf.strings.split(vocab, sep="\n")
-    vocab_size = tf.shape(vocab)[0]
-
-    table = tf.lookup.StaticHashTable(
-        tf.lookup.KeyValueTensorInitializer(vocab, tf.range(vocab_size)),
-        default_value = -1
-    )
-    return table
-
-def encode_task(task, feature_table):
-    task_indices = feature_table.lookup(task)
-    task_one_hot = tf.one_hot(task_indices, depth=int(feature_table.size()))
-    return task_one_hot
-
-def decode_image(image):
-    image = tf.image.decode_jpeg(image, channels=3)
-    image = (tf.cast(image, tf.float32) / 127.5) - 1
-    image = tf.keras.preprocessing.image.smart_resize(image, IMAGE_SIZE)
-    return image
-
-
-def read_tfrecord_features(example, tfrecord_format):
-    example = tf.io.parse_single_example(example, tfrecord_format)
-    date = tf.strings.to_number(example['date'], out_type=tf.int32)
-    image = decode_image(example['image_raw'])
-    return (image, date)
-
-def read_tfrecord_labels(example, feature_table, tfrecord_format):
-    example = tf.io.parse_single_example(example, tfrecord_format)
-    task = encode_task(example['task'], feature_table)
-    return task
-
-
-def load_dataset(record_filepath, feature_filepath):
-    tfrecord_format = {
-        "date": tf.io.FixedLenFeature([], tf.string),
-        "task": tf.io.FixedLenFeature([], tf.string),
-        "image_raw": tf.io.FixedLenFeature([], tf.string)
-    }
-    dataset = tf.data.TFRecordDataset(record_filepath)
-    table = feature_encode_table(feature_filepath)
-    X = dataset.map(lambda x: read_tfrecord_features(x, tfrecord_format))
-    y = dataset.map(lambda x: read_tfrecord_labels(x, table, tfrecord_format))
-    return (X, y)
-
-
-
-X_train_clear_10, y_train_clear_10 = load_dataset('train-clear-10.tfrecord', clear_10_features_path)
-X_test_clear_10, y_test_clear_10 = load_dataset('train-clear-10.tfrecord', clear_10_features_path)
-X_train_clear_100, y_train_clear_100 = load_dataset('train-clear-10.tfrecord', clear_10_features_path)
-X_test_clear_100, y_test_clear_100 = load_dataset('train-clear-10.tfrecord', clear_10_features_path)
