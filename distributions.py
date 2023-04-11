@@ -7,7 +7,7 @@ import numpy as np
 MIN_EPSILON = 1e-5
 MAX_EPSILON = 1.-1e-5
 
-PI = tf.Variable(tf.FloatTensor([math.pi]))
+PI = tf.Variable(tf.constant(math.pi, dtype=tf.float32))
 PI.requires_grad = False
 if tf.test.is_gpu_available():
     PI = PI.cuda()
