@@ -11,7 +11,7 @@ from utils import Reshape
 # -----------------------------------------------------------------------------------
 
 def conv3x3(in_planes, out_planes, stride=1):
-    return layer.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    return layer.Conv2D(in_planes, out_planes, kernel_size=3, stride=stride,
                         padding=1, bias=False)
 
 
@@ -21,16 +21,16 @@ class BasicBlock(keras.Model):
     def __init__(self, in_planes, planes, stride=1):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(in_planes, planes, stride)
-        self.bn1 = layer.BatchNorm2d(planes)
+        self.bn1 = layer.BatchNormalization(planes)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = layer.BatchNorm2d(planes)
+        self.bn2 = layer.BatchNormalization(planes)
 
-        self.shortcut = layer.Sequential()
+        self.shortcut = keras.Sequential()
         if stride != 1 or in_planes != self.expansion * planes:
-            self.shortcut = layer.Sequential(
-                layer.Conv2d(in_planes, self.expansion * planes, kernel_size=1,
+            self.shortcut = keras.Sequential(
+                layer.Conv2D(in_planes, self.expansion * planes, kernel_size=1,
                              stride=stride, bias=False),
-                layer.BatchNorm2d(self.expansion * planes)
+                layer.BatchNormalization(self.expansion * planes)
             )
 
     def call(self, x):
@@ -114,7 +114,7 @@ class classifier(keras.Model):
         self.args = args
 
         activation = layer.ReLU()
-        self.layer = layer.Sequential(
+        self.layer = keras.Sequential(
             Reshape([-1]),
             GatedDense(L, K, activation=activation),
             layer.Dropout(p=0.2),
