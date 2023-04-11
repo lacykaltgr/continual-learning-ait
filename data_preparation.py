@@ -1,6 +1,4 @@
 import tensorflow as tf
-import numpy as np
-
 
 class CLDataLoader(object):
     def __init__(self, datasets_per_task, batch_size, train=True):
@@ -56,16 +54,14 @@ def load_dataset(
                 X_task_train.append(X_train[j])
                 y_task_train.append(y_train[j]) #[start_class:end_class])
 
-        datasets_per_task_train.append(
-            np.array([X_task_train, y_task_train]))
+        datasets_per_task_train.append((X_task_train, y_task_train))
 
         for j in range(X_test.shape[0]):
             if y_test[j][start_class:end_class].any():
                 X_task_test.append(X_test[j])
                 y_task_test.append(y_test[j]) #[start_class:end_class])
 
-        datasets_per_task_test.append(
-            np.array([X_task_test, y_task_test]))
+        datasets_per_task_test.append((X_task_test, y_task_test))
 
     return datasets_per_task_train, datasets_per_task_test
 
