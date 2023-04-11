@@ -15,15 +15,15 @@ from stable_diffusion.stable_diffusion import StableDiffusion
 # Obligatory overhead
 # -----------------------------------------------------------------------------------------
 
-result_dir = 'results'
+result_dir = 'results/'
 
-result_path = os.path.join('Results', result_dir)
+result_path = os.path.join(result_dir)
 if not os.path.exists(result_path): os.mkdir(result_path)
-sample_path = os.path.join(*['Results', result_dir, 'samples/'])
+sample_path = os.path.join(*[result_dir, 'samples'])
 if not os.path.exists(sample_path): os.mkdir(sample_path)
-recon_path = os.path.join(*['Results', result_dir, 'reconstructions/'])
+recon_path = os.path.join(*[result_dir, 'reconstructions'])
 if not os.path.exists(recon_path): os.mkdir(recon_path)
-mir_path = os.path.join(*['Results', result_dir, 'mir/'])
+mir_path = os.path.join(*[result_dir, 'mir'])
 if not os.path.exists(mir_path): os.mkdir(mir_path)
 
 
@@ -302,38 +302,7 @@ for run in range(n_runs):
     # End Task Loop
     #--------------
 
-    print('--------------------------------------')
-    print(f'Run #{run} Final Results')
-    print('--------------------------------------')
-    for mode in ['valid', 'test']:
 
-        # accuracy
-        final_accs = LOG[run][mode]['acc'][:, task]
-        logging_per_task(wandb, LOG, run, mode, 'final_acc', task, value=np.round(np.mean(final_accs),2))
-
-        # forgetting
-        best_acc = np.max(LOG[run][mode]['acc'], 1)
-        final_forgets = best_acc - LOG[run][mode]['acc'][:, task]
-        logging_per_task(wandb, LOG, run, mode, 'final_forget', task, value=np.round(np.mean(final_forgets[:-1]),2))
-
-        # VAE loss
-        final_elbos = LOG[run][mode]['gen_loss'][:, task]
-        logging_per_task(wandb, LOG, run, mode, 'final_elbo', task, value=np.round(np.mean(final_elbos), 2))
-
-        print(f'\n{mode}:')
-        print(f'final accuracy: {final_accs}')
-        print(f'average: {LOG[run][mode]["final_acc"]}')
-        print(f'final forgetting: {final_forgets}')
-        print(f'average: {LOG[run][mode]["final_forget"]}')
-        print(f'final VAE loss: {final_elbos}')
-        print(f'average: {LOG[run][mode]["final_elbo"]}\n')
-
-        try:
-            mir_worked_frac = mir_success/ (mir_tries)
-            logging_per_task(wandb, LOG, run, mode, 'final_mir_worked_frac', task, mir_worked_frac)
-            print('mir worked \n', mir_worked_frac)
-        except:
-            pass
 
 # End Run Loop
 #-------------
