@@ -168,7 +168,7 @@ def binary_loss_array(recon_x, x, z_mu, z_var, z_0, z_k, ldj, beta=1.):
     return loss
 
 
-def multinomial_loss_array(x_logit, x, z_mu, z_var, z_0, z_k, ldj, args, beta=1.):
+def multinomial_loss_array(x_logit, x, z_mu, z_var, z_0, z_k, ldj, input_size, beta=1.):
     """
     Computes the discritezed logistic loss without averaging or summing over the batch dimension.
     """
@@ -176,7 +176,7 @@ def multinomial_loss_array(x_logit, x, z_mu, z_var, z_0, z_k, ldj, args, beta=1.
     num_classes = 256
     batch_size = x.size(0)
 
-    x_logit = x_logit.view(batch_size, num_classes, args.input_size[0], args.input_size[1], args.input_size[2])
+    x_logit = x_logit.view(batch_size, num_classes, input_size[0], input_size[1], input_size[2])
 
     # make integer class labels
     target = (x * (num_classes - 1)).long()
@@ -214,24 +214,24 @@ def log_Bernoulli(x_mean, x, average=False, dim=None):
         return np.sum( log_bernoulli, dim )
 
 
-def calculate_loss(x_mean, x, z_mu, z_var, z_0, z_k, ldj, args, beta=1.):
+def calculate_loss(x_mean, x, z_mu, z_var, z_0, z_k, ldj, input_size, loss,  beta=1.):
     """
     Picks the correct loss depending on the input type.
     """
 
-    if args.output_loss == 'bernouilli':
+    if loss == 'bernouilli':
         loss, rec, kl = binary_loss_function(x_mean, x, z_mu, z_var, z_0, z_k, ldj, beta=beta)
         bpd = 0.
 
-    elif args.output_loss == 'mse':
+    elif loss == 'mse':
         loss, rec, kl = mse_loss_function(x_mean, x, z_mu, z_var, z_0, z_k, ldj, beta=beta)
         bpd = 0.
 
-    elif args.output_loss == 'multinomial':
-        loss, rec, kl = multinomial_loss_function(x_mean, x, z_mu, z_var, z_0, z_k, ldj, args, beta=beta)
-        bpd = loss.item() / (np.prod(args.input_size) * np.log(2.))
+    elif loss == 'multinomial':
+        loss, rec, kl = multinomial_loss_function(x_mean, x, z_mu, z_var, z_0, z_k, ldj, input_size, beta=beta)
+        bpd = loss.item() / (np.prod(input_size) * np.log(2.))
     else:
-        raise ValueError('Invalid input type for calculate loss: %s.' % args.input_type)
+        raise ValueError('Invalid input type for calculate loss.')
 
     #TODO(add log_logistic loss for continuous)
 
