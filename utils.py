@@ -1,13 +1,20 @@
 import tensorflow as tf
-import keras
 import numpy as np
-import copy
 from collections import OrderedDict as OD
 
 ''' For MIR '''
 
+def sum_list(lst):
+    total = 0 # initialize the total sum
+    for element in lst: # loop through each element in the list
+        if isinstance(element, list): # check if the element is a nested list
+            total += sum_list(element) # recursively sum the nested list and add to the total
+        else:
+            total += element # add the element to the total
+    return total
 
-def overwrite_grad(pp, new_grad, grad_dims):
+
+def overwrite_grad(parameters, new_grad, grad_dims):
     """
         This is used to overwrite the gradients with a new gradient
         vector, whenever violations occur.
@@ -16,55 +23,62 @@ def overwrite_grad(pp, new_grad, grad_dims):
         grad_dims: list storing number of parameters at each layer
     """
     cnt = 0
-    for param in pp():
-        param.grad = tf.zeros_like(param.data)
-        beg = 0 if cnt == 0 else sum(grad_dims[:cnt])
-        en = sum(grad_dims[:cnt + 1])
-        this_grad = new_grad[beg: en].contiguous().view(
-            param.data.size())
-        param.grad.data.copy_(this_grad)
-        cnt += 1
+    for layer in parameters:
+        if layer.trainable:
+            # get the start and end indices of the new gradient vector for this param
+            beg = 0 if cnt == 0 else sum_list(grad_dims[:cnt])
+            en = sum_list(grad_dims[:cnt + 1])
+            # reshape the new gradient vector to match the param shape
+            this_grad = tf.reshape(new_grad[beg: en], np.array(layer.trainable_variables).shape)
+            # assign the new gradient to the param_grad tensor
+            layer.trainable_variables.assign(this_grad)
+            # increment the counter
+            cnt += 1
 
 
-def get_grad_vector(args, pp, grad_dims):
+
+
+def get_grad_vector(parameters, grad_dims):
     """
      gather the gradients in one vector
     """
-    grads = tf.Tensor(sum(grad_dims))
-    if args.cuda:
-        grads = grads.cuda()
 
-    grads.fill_(0.0)
+    grads = tf.constant(0.0, shape=[sum_list(grad_dims)])
+
     cnt = 0
-    for param in pp():
-        if param.grad is not None:
-            beg = 0 if cnt == 0 else sum(grad_dims[:cnt])
-            en = sum(grad_dims[:cnt + 1])
-            grads[beg: en].copy_(param.grad.data.view(-1))
+    for param in parameters:
+        if param.trainable:
+            with tf.GradientTape() as tape:
+                tape.watch(param)
+                y = param * 1.0
+            grad = tape.gradient(y, param)
+            grad = tf.reshape(grad, [-1])
+            beg = 0 if cnt == 0 else sum_list(grad_dims[:cnt])
+            en = sum_list(grad_dims[:cnt + 1])
+            idx = tf.range(beg, en)
+            updates = tf.gather(grad, idx) # gather the updates from the gradient tensor
+            grads = tf.tensor_scatter_nd_update(grads, tf.expand_dims(idx, axis=1), updates)
         cnt += 1
     return grads
 
 
-def get_future_step_parameters(this_net, grad_vector, grad_dims, lr=1):
+def get_future_step_parameters(this_net, grad_vector, grad_dims, params):
+    import classifier
     """
     computes \theta-\delta\theta
     :param this_net:
     :param grad_vector:
     :return:
     """
-    new_net = copy.deepcopy(this_net)
-    overwrite_grad(new_net.parameters, grad_vector, grad_dims)
-    with tf.GradientTape(persistent=True) as tape:
-        for param in new_net.variables:
-            if param.grad is not None:
-                param.data = param.data - lr * param.grad.data
-    return new_net
 
+    new_model = classifier.ResNet18(params["n_classes"], nf=20, input_size=params["input_size"])
+    new_model.build(input_shape=params["input_size"])
+    new_model.set_weights(this_net.get_weights())
+    #overwrite_grad(new_model.layers, grad_vector, grad_dims) # assume this function is defined elsewhere
+    optimizer = tf.keras.optimizers.SGD(learning_rate=params["lr"]) # create an optimizer with the given learning rate
+    optimizer.apply_gradients(zip(grad_vector, new_model.trainable_variables)) # update the new_net parameters with the gradient vector
+    return new_model
 
-def get_grad_dims(self):
-    self.grad_dims = []
-    for param in self.net.parameters():
-        self.grad_dims.append(param.data.numel())
 
 
 ''' Others '''
@@ -128,13 +142,6 @@ def compute_offsets(task, nc_per_task, is_cifar):
 #    if offset2 < self.n_outputs:
 #        output[:, offset2:n_outputs].data.fill_(-10e10)
 
-class Reshape(keras.Model):
-    def __init__(self, shape):
-        super(Reshape, self).__init__()
-        self.shape = shape
-
-    def call(self, input):
-        return input.view(input.size(0), *self.shape)
 
 
 ''' LOG '''

@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 class CLDataLoader(object):
     def __init__(self, datasets_per_task, batch_size, train=True):
         bs = batch_size if train else 64
@@ -15,7 +16,6 @@ class CLDataLoader(object):
 
     def __len__(self):
         return len(self.loaders)
-
 
 
 def load_dataset(
@@ -73,6 +73,7 @@ def load_clear_100(path, img_size=32):
     X_test, y_test = load_from_tfrecord(path + 'test-clear-100.tfrecord', clear_100_features_path, img_size)
     return (X_train, y_train), (X_test, y_test)
 
+
 def load_cifar_100():
     (X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar100.load_data()
     n_classes = 100
@@ -83,13 +84,8 @@ def load_cifar_100():
     return (X_train, y_train), (X_test, y_test)
 
 
-
-
 # ------------
 # Utilities to load and preprocess the data
-# ------------
-
-
 def feature_encode_table(filepath):
     vocab = tf.io.read_file(filepath)
     vocab = tf.strings.split(vocab, sep="\n")
@@ -101,10 +97,12 @@ def feature_encode_table(filepath):
     )
     return table
 
+
 def encode_task(task, feature_table):
     task_indices = feature_table.lookup(task)
     task_one_hot = tf.one_hot(task_indices, depth=int(feature_table.size()))
     return task_one_hot
+
 
 def decode_image(image, img_size=32):
     image = tf.image.decode_jpeg(image, channels=3)
@@ -119,10 +117,12 @@ def read_tfrecord_features(example, tfrecord_format, img_size=32):
     image = decode_image(example['image_raw'], img_size)
     return (image, date)
 
+
 def read_tfrecord_labels(example, feature_table, tfrecord_format):
     example = tf.io.parse_single_example(example, tfrecord_format)
     task = encode_task(example['task'], feature_table)
     return task
+
 
 def load_from_tfrecord(record_filepath, feature_filepath, img_size=32):
     tfrecord_format = {
@@ -137,11 +137,9 @@ def load_from_tfrecord(record_filepath, feature_filepath, img_size=32):
     return (X, y)
 
 
-
 #------------
 # Download CLEAR-100 dataset and move to tfrecord format for faster loading
 #------------
-
 def _bytes_feature(value):
     if isinstance(value, type(tf.constant(0))):
         value = value.numpy()

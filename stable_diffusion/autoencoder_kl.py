@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow_addons as tfa
 
-from layers import PaddedConv2D
+from stable_diffusion.layers import PaddedConv2D
 
 
 class AttentionBlock(keras.layers.Layer):
@@ -122,4 +122,6 @@ class Encoder(keras.Sequential):
                 keras.layers.Lambda(lambda x : x[... , :4] * 0.18215)
             ]
         )
+
+
 
