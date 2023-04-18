@@ -22,3 +22,6 @@ inductive biases, applying meta-learning, and so on.
 Székely Anna,
 Aryan Prabhudesai,
 Freund László
+
+# The architecture
+![img.png](img.png)
