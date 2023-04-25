@@ -1,6 +1,5 @@
 import keras
 import keras.layers as layer
-import numpy as np
 import tensorflow as tf
 
 
@@ -26,6 +25,7 @@ class GatedDense(tf.keras.layers.Layer):
 ''' classifier for GEN and GEN-MIR'''
 class classifier(keras.Model):
     def __init__(self, params):
+        print("Classifier init")
         super(classifier, self).__init__()
 
         K = params["cls_hiddens"]

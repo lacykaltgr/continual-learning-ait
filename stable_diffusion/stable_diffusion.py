@@ -13,6 +13,7 @@ from stable_diffusion.constants import _ALPHAS_CUMPROD, PYTORCH_CKPT_MAPPING
 
 class StableDiffusion:
     def __init__(self, img_height=64, img_width=64, jit_compile=False, download_weights=False):
+        print("StableDiffusion init")
         self.img_height = img_height
         self.img_width = img_width
 
@@ -28,41 +29,6 @@ class StableDiffusion:
 
         self.dtype = tf.float64
 
-    def generate(
-        self,
-        batch_size=1,
-        num_steps=25,
-        temperature=1,
-        classifier=None,
-        seed=None,
-        input_latent=None,
-        input_latent_strength=0.5,
-        decode= True,
-    ):
-
-        timesteps = np.arange(1, num_steps + 1)
-        input_lat_noise_t = timesteps[int(len(timesteps)*input_latent_strength)]
-        latent, alphas, alphas_prev = self.get_starting_parameters(
-            timesteps, batch_size, input_latent=input_latent, input_lat_noise_t=input_lat_noise_t
-        )
-        timesteps = timesteps[: int(len(timesteps)*input_latent_strength)]
-
-
-        # Diffusion stage
-        progbar = tqdm(list(enumerate(timesteps))[::-1])
-        for index, timestep in progbar:
-            progbar.set_description(f'{index:3d} {timestep:3d}')
-            e_t = self.get_model_output(
-                latent,
-                timestep,
-                batch_size
-            )
-            a_t, a_prev = alphas[index], alphas_prev[index]
-            latent, pred_x0 = self.get_x_prev(latent, e_t, a_t, a_prev, temperature)
-            if classifier is not None:
-                pred = classifier
-
-        return self.decode(latent) if decode else latent
 
     def decode(self, latent):
         decoded = self.decoder(latent, training=False)
@@ -123,10 +89,10 @@ class StableDiffusion:
             getattr(self, module_name).set_weights(module_weights)
             print("Loaded %d weights for %s" % (len(module_weights), module_name))
 
-    # for model with input image/prompt
+    # for model with input latent
 
-    def add_noise(self, x , t , noise=None ):
-        if (len(x.shape) == 3):
+    def add_noise(self, x, t, noise=None):
+        if len(x.shape) == 3:
             x = tf.expand_dims(x, axis=0)
         batch_size, w, h, c = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
         if noise is None:
@@ -174,11 +140,13 @@ def get_models(img_height, img_width, download_weights=True):
     encoder = Encoder()
     encoder = keras.models.Model(inp_img, encoder(inp_img))
 
+    #print(diffusion_model.get_weights())
+
     if download_weights:
-        diffusion_model_weights_fpath = keras.utils.get_file(
-            origin="https://huggingface.co/fchollet/stable-diffusion/resolve/main/diffusion_model.h5",
-            file_hash="a5b2eea58365b18b40caee689a2e5d00f4c31dbcb4e1d58a9cf1071f55bbbd3a",
-        )
+        #diffusion_model_weights_fpath = keras.utils.get_file(
+        #    origin="https://huggingface.co/fchollet/stable-diffusion/resolve/main/diffusion_model.h5",
+        #    file_hash="a5b2eea58365b18b40caee689a2e5d00f4c31dbcb4e1d58a9cf1071f55bbbd3a",
+        #)
         #decoder_weights_fpath = keras.utils.get_file(
         #    origin="https://huggingface.co/fchollet/stable-diffusion/resolve/main/decoder.h5",
         #    file_hash="6d3c5ba91d5cc2b134da881aaa157b2d2adc648e5625560e3ed199561d0e39d5",
@@ -189,7 +157,7 @@ def get_models(img_height, img_width, download_weights=True):
             file_hash="56a2578423c640746c5e90c0a789b9b11481f47497f817e65b44a1a5538af754",
         )
 
-        diffusion_model.load_weights(diffusion_model_weights_fpath)
+        #diffusion_model.load_weights(diffusion_model_weights_fpath)
         #decoder.load_weights(decoder_weights_fpath)
         encoder.load_weights(encoder_weights_fpath)
 

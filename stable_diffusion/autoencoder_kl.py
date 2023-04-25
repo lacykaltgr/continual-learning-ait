@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow_addons as tfa
 
 from stable_diffusion.layers import PaddedConv2D
 
@@ -8,7 +7,7 @@ from stable_diffusion.layers import PaddedConv2D
 class AttentionBlock(keras.layers.Layer):
     def __init__(self, channels):
         super().__init__()
-        self.norm = tfa.layers.GroupNormalization(epsilon=1e-5)
+        self.norm = keras.layers.GroupNormalization(epsilon=1e-5)
         self.q = PaddedConv2D(channels, 1)
         self.k = PaddedConv2D(channels, 1)
         self.v = PaddedConv2D(channels, 1)
@@ -40,9 +39,9 @@ class AttentionBlock(keras.layers.Layer):
 class ResnetBlock(keras.layers.Layer):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.norm1 = tfa.layers.GroupNormalization(epsilon=1e-5)
+        self.norm1 = keras.layers.GroupNormalization(epsilon=1e-5)
         self.conv1 = PaddedConv2D(out_channels, 3, padding=1)
-        self.norm2 = tfa.layers.GroupNormalization(epsilon=1e-5)
+        self.norm2 = keras.layers.GroupNormalization(epsilon=1e-5)
         self.conv2 = PaddedConv2D(out_channels, 3, padding=1)
         self.nin_shortcut = (
             PaddedConv2D(out_channels, 1)
@@ -84,7 +83,7 @@ class Decoder(keras.Sequential):
                 ResnetBlock(256, 128),
                 ResnetBlock(128, 128),
                 ResnetBlock(128, 128),
-                tfa.layers.GroupNormalization(epsilon=1e-5),
+                keras.layers.GroupNormalization(epsilon=1e-5),
                 keras.layers.Activation("swish"),
                 PaddedConv2D(3, 3, padding=1),
             ]
@@ -93,6 +92,7 @@ class Decoder(keras.Sequential):
 
 class Encoder(keras.Sequential):
     def __init__(self):
+        print("Encoder init")
         super().__init__(
             [
                 PaddedConv2D(128, 3, padding=1 ),
@@ -115,7 +115,7 @@ class Encoder(keras.Sequential):
                 AttentionBlock(512),
                 ResnetBlock(512, 512),
                 
-                tfa.layers.GroupNormalization(epsilon=1e-5) , 
+                keras.layers.GroupNormalization(epsilon=1e-5) ,
                 keras.layers.Activation("swish"),
                 PaddedConv2D(8, 3, padding=1 ),
                 PaddedConv2D(8, 1 ),
