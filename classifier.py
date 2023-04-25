@@ -36,7 +36,8 @@ class classifier(keras.Model):
             layer.Flatten(),
             GatedDense(K, activation=activation),
             layer.Dropout(0.2),
-            GatedDense(n_classes, activation=None)
+            GatedDense(K, activation=None),
+            layer.Dense(n_classes, activation='softmax')
         ])
         self.layer.build(input_shape=(None, 4, 4, 4))
 
