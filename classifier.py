@@ -3,10 +3,6 @@ import keras.layers as layer
 import tensorflow as tf
 
 
-# Classifiers
-# -----------------------------------------------------------------------------------
-
-
 class GatedDense(tf.keras.layers.Layer):
     def __init__(self, output_size, activation=None):
         super(GatedDense, self).__init__()
@@ -22,7 +18,6 @@ class GatedDense(tf.keras.layers.Layer):
         return h * g
 
 
-''' classifier for GEN and GEN-MIR'''
 class classifier(keras.Model):
     def __init__(self, params):
         print("Classifier init")

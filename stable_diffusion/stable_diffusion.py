@@ -27,16 +27,13 @@ class StableDiffusion:
             #self.decoder.compile(jit_compile=True)
             self.encoder.compile(jit_compile=True)
 
-        self.dtype = tf.float64
+        self.dtype = tf.float32
 
 
     def decode(self, latent):
         decoded = self.decoder(latent, training=False)
         decoded = ((decoded + 1) / 2) * 255
         return np.clip(decoded, 0, 255).astype("uint8")
-
-    def dType(self, x):
-        return tf.cast(x, self.dtype)
 
     def initialize(self, params, input_latent=None):
         timesteps = np.arange(1, params['num_steps']+ 1)
@@ -49,13 +46,13 @@ class StableDiffusion:
 
     def get_x_prev(self, x, e_t, a_t, a_prev, temperature):
         sigma_t = 0
-        sqrt_one_minus_at = self.dType(math.sqrt(1 - a_t))
-        pred_x0 = self.dType((self.dType(x) - sqrt_one_minus_at * self.dType(e_t)) / self.dType(math.sqrt(a_t)))
+        sqrt_one_minus_at = math.sqrt(1 - a_t)
+        pred_x0 = x - sqrt_one_minus_at * e_t / math.sqrt(a_t)
 
         # Direction pointing to x_t
-        dir_xt = self.dType(math.sqrt(1.0 - a_prev - sigma_t**2) * e_t)
+        dir_xt = math.sqrt(1.0 - a_prev - sigma_t**2) * e_t
         #noise = sigma_t * tf.random.normal(x.shape, seed=seed) * temperature
-        x_prev = self.dType(math.sqrt(a_prev)) * pred_x0 + dir_xt
+        x_prev = math.sqrt(a_prev) * pred_x0 + dir_xt
         return x_prev
 
 
@@ -77,17 +74,6 @@ class StableDiffusion:
         return tf.convert_to_tensor(embedding.reshape(1, -1), dtype=self.dtype)
 
 
-    def load_weights(self, path):
-        pt_weights = tf.train.load_checkpoint(path)
-        for module_name in ['diffusion_model', 'encoder']:
-            module_weights = []
-            for key, perm in PYTORCH_CKPT_MAPPING[module_name]:
-                w = pt_weights.get_tensor(key).numpy()
-                if perm is not None:
-                    w = np.transpose(w, perm)
-                module_weights.append(w)
-            getattr(self, module_name).set_weights(module_weights)
-            print("Loaded %d weights for %s" % (len(module_weights), module_name))
 
     # for model with input latent
 
@@ -97,7 +83,7 @@ class StableDiffusion:
         batch_size, w, h, c = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
         if noise is None:
             noise = tf.random.normal((batch_size, w, h, c), dtype=tf.float32)
-        sqrt_alpha_prod = _ALPHAS_CUMPROD[t] ** 0.5
+        sqrt_alpha_prod = tf.cast(_ALPHAS_CUMPROD[t] ** 0.5, tf.float32)
         sqrt_one_minus_alpha_prod = (1 - _ALPHAS_CUMPROD[t]) ** 0.5
 
         return sqrt_alpha_prod * x + sqrt_one_minus_alpha_prod * noise
@@ -110,6 +96,7 @@ class StableDiffusion:
         if input_latent is None:
             latent = tf.random.normal((batch_size, n_h, n_w, 4))
         else:
+            input_latent = tf.cast(input_latent, self.dtype)
             #latent = tf.repeat(input_latent , batch_size , axis=0)
             latent = self.add_noise(input_latent, input_lat_noise_t)
         return latent, alphas, alphas_prev

@@ -84,8 +84,8 @@ def load_cifar_100():
     return (X_train, y_train), (X_test, y_test)
 
 
-# ------------
-# Utilities to load and preprocess the data
+''' Utilities to load and preprocess the data '''
+
 def feature_encode_table(filepath):
     vocab = tf.io.read_file(filepath)
     vocab = tf.strings.split(vocab, sep="\n")
@@ -137,9 +137,8 @@ def load_from_tfrecord(record_filepath, feature_filepath, img_size=32):
     return (X, y)
 
 
-#------------
-# Download CLEAR-100 dataset and move to tfrecord format for faster loading
-#------------
+''' Download CLEAR-100 dataset and move to tfrecord format for faster loading '''
+
 def _bytes_feature(value):
     if isinstance(value, type(tf.constant(0))):
         value = value.numpy()
