@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow_addons as tfa
 
 from stable_diffusion.layers import PaddedConv2D, apply_seq
 
@@ -10,7 +9,7 @@ class ResBlock(keras.layers.Layer):
     def __init__(self, channels, out_channels):
         super().__init__()
         self.in_layers = [
-            tfa.layers.GroupNormalization(epsilon=1e-5),
+            keras.layers.GroupNormalization(epsilon=1e-5),
             keras.activations.swish,
             PaddedConv2D(out_channels, 3, padding=1),
         ]
@@ -19,7 +18,7 @@ class ResBlock(keras.layers.Layer):
             keras.layers.Dense(out_channels),
         ]
         self.out_layers = [
-            tfa.layers.GroupNormalization(epsilon=1e-5),
+            keras.layers.GroupNormalization(epsilon=1e-5),
             keras.activations.swish,
             PaddedConv2D(out_channels, 3, padding=1),
         ]
@@ -31,8 +30,6 @@ class ResBlock(keras.layers.Layer):
         x, emb = inputs
         h = apply_seq(x, self.in_layers)
         emb_out = apply_seq(emb, self.emb_layers)
-        print("h", h.shape)
-        print("emb", emb_out.shape)
         h = h + emb_out[:, None, None]
         h = apply_seq(h, self.out_layers)
         ret = self.skip_connection(x) + h
@@ -62,6 +59,7 @@ class Upsample(keras.layers.Layer):
 
 class UNetModel(keras.Model):
     def __init__(self):
+        print("UNetModel init")
         super().__init__()
         self.time_embed = [
             keras.layers.Dense(1280),
@@ -110,7 +108,7 @@ class UNetModel(keras.Model):
             [ResBlock(640, 320)], #, Conv2D(320, kernel_size=8, padding="same")],
         ]
         self.out = [
-            tfa.layers.GroupNormalization(epsilon=1e-5),
+            keras.layers.GroupNormalization(epsilon=1e-5),
             keras.activations.swish,
             PaddedConv2D(4, kernel_size=3, padding=1),
         ]
