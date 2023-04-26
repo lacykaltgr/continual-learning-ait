@@ -17,11 +17,17 @@ The   engineering principles that might lead to better performance could be free
 introducing memory, introducing replay (via a recurrent layer), introducing
 inductive biases, applying meta-learning, and so on.
 
+# Instructions to use
+The program in question is quite memory-intensive, and as such, it cannot be executed in its entirety without utilizing Google Colab Pro. However, within the Testing for Development section, there is a shorter demo consisting of two tasks which can be run on a GPU. To execute this demo, it is only necessary to run all the cells that come before it. The Testing for Development block also includes an evaluation section which assesses the program's performance on these two tasks. 
+The final program will perform the same processes as the Testing for Development section but will include all tasks, which is expected to take a considerable amount of time.
+
+
+# The architecture
+![img.png](img.png)
+
 
 # The team
 Székely Anna,
 Aryan Prabhudesai,
 Freund László
 
-# The architecture
-![img.png](img.png)
