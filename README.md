@@ -18,11 +18,25 @@ introducing memory, introducing replay (via a recurrent layer), introducing
 inductive biases, applying meta-learning, and so on.
 
 # Instructions to use
-The program in question is quite memory-intensive, and as such, it cannot be executed in its entirety without utilizing Google Colab Pro. However, within the Testing for Development section, there is a shorter demo consisting of two tasks which can be run on a GPU. To execute this demo, it is only necessary to run all the cells that come before it. The Testing for Development block also includes an evaluation section which assesses the program's performance on these two tasks. 
+The main program which can be found in main.ipynb file is quite memory-intensive, and as such, it cannot be executed in its entirety without utilizing Google Colab Pro. However, within the Testing for Development section, there is a shorter demo consisting of two tasks which can be run on a GPU. To execute this demo, it is only necessary to run all the cells that come before it. The Testing for Development block also includes an evaluation section which assesses the program's performance on these two tasks. 
 The final program will perform the same processes as the Testing for Development section but will include all tasks, which is expected to take a considerable amount of time.
 
+continual-learning-ait
+  stable_diffusion
+      -autoencoder_kl.py   #encoder and decoder models
+      -constant.py         #constant for stable diffusion model
+      -diffusion_model.py  #u-net diffusion model
+      -layers.py           #padded_conv2d, helper functions
+      -stable_diffusion.py #stable diffusion 
+ -classifier.py            #classifier model
+ -data_preparation.py      #function to load the datasets, split them into tasks
+ -utils.py                 #additional utility functions
+ -main.ipynb               #main file for the experiment
+ 
+      
 
 # The architecture
+The architecture utilizes the Generative Replay based MIR(Maximally Interferred Retrival) idea and a modified Stable Diffusion model. (Planning to make changes on the Diffusion model loss function.)
 ![img.png](img.png)
 
 
