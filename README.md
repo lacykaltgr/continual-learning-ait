@@ -22,16 +22,16 @@ The main program which can be found in main.ipynb file is quite memory-intensive
 The final program will perform the same processes as the Testing for Development section but will include all tasks, which is expected to take a considerable amount of time.
 
 continual-learning-ait
-  *stable_diffusion
-      *autoencoder_kl.py   #encoder and decoder models
-      *constant.py         #constant for stable diffusion model
-      *diffusion_model.py  #u-net diffusion model
-      *layers.py           #padded_conv2d, helper functions
-      *stable_diffusion.py #stable diffusion 
-  *classifier.py            #classifier model
-  *data_preparation.py      #function to load the datasets, split them into tasks
-  *utils.py                 #additional utility functions
-  *main.ipynb               #main file for the experiment
+  stable_diffusion
+      * autoencoder_kl.py   #encoder and decoder models
+      * constant.py         #constant for stable diffusion model
+      * diffusion_model.py  #u-net diffusion model
+      * layers.py           #padded_conv2d, helper functions
+      * stable_diffusion.py #stable diffusion 
+  * classifier.py            #classifier model
+  * data_preparation.py      #function to load the datasets, split them into tasks
+  * utils.py                 #additional utility functions
+  * main.ipynb               #main file for the experiment
  
       
 
