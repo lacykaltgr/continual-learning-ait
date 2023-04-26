@@ -25,14 +25,14 @@ This repository contains the following files:
 
 - stable_diffusion/
   - autoencoder_kl.py    # Encoder and decoder models
-  - constant.py          # Constant for stable diffusion model
+  - constant.py.         # Constant for stable diffusion model
   - diffusion_model.py   # U-Net diffusion model
-  - layers.py            # Padded_conv2d and helper functions
+  - layers.py.           # Padded_conv2d and helper functions
   - stable_diffusion.py  # Stable diffusion implementation
-- classifier.py           # Classifier model
-- data_preparation.py     # Function to load datasets and split them into tasks
-- utils.py                # Additional utility functions
-- main.ipynb              # Main file for the experiment
+- classifier.py.         # Classifier model
+- data_preparation.py    # Function to load datasets and split them into tasks
+- utils.py.              # Additional utility functions
+- main.ipynb             # Main file for the experiment
       
 
 # The architecture
