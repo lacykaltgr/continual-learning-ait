@@ -30,15 +30,20 @@ def load_dataset(
 
     if dataset == 'clear-100':
         (X_train, y_train), (X_test, y_test) = load_clear_100(path, img_size)
+        n_classes = 100
     elif dataset == 'cifar-100':
         (X_train, y_train), (X_test, y_test) = load_cifar_100()
+        n_classes = 100
+    elif dataset == 'cifar-10':
+        (X_train, y_train), (X_test, y_test) = load_cifar_10()
+        n_classes = 10
     else:
         print("Wrong dataset name")
         return None
 
     datasets_per_task_train = []
     datasets_per_task_test = []
-    num_tasks = int((100 - n_classes_first_task) / n_classes_other_task) + 1
+    num_tasks = int((n_classes - n_classes_first_task) / n_classes_other_task) + 1
 
     for i in range(num_tasks):
         X_task_train = []
@@ -83,6 +88,14 @@ def load_cifar_100():
     y_test = tf.keras.utils.to_categorical(y_test, n_classes)
     return (X_train, y_train), (X_test, y_test)
 
+def load_cifar_10():
+    (X_train, y_train), (X_test, y_test) = tf.keras.datasets.cifar10.load_data()
+    n_classes = 10
+    X_train = (X_train / 127.5) -1
+    X_test = (X_test / 127.5) -1
+    y_train = tf.keras.utils.to_categorical(y_train, n_classes)
+    y_test = tf.keras.utils.to_categorical(y_test, n_classes)
+    return (X_train, y_train), (X_test, y_test)
 
 ''' Utilities to load and preprocess the data '''
 
