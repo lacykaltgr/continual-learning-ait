@@ -129,7 +129,7 @@ def get_models(img_height, img_width, download_weights=True):
 
     #print(diffusion_model.get_weights())
 
-    if download_weights:
+    #if download_weights:
         #diffusion_model_weights_fpath = keras.utils.get_file(
         #    origin="https://huggingface.co/fchollet/stable-diffusion/resolve/main/diffusion_model.h5",
         #    file_hash="a5b2eea58365b18b40caee689a2e5d00f4c31dbcb4e1d58a9cf1071f55bbbd3a",
@@ -139,13 +139,13 @@ def get_models(img_height, img_width, download_weights=True):
         #    file_hash="6d3c5ba91d5cc2b134da881aaa157b2d2adc648e5625560e3ed199561d0e39d5",
         #)
 
-        encoder_weights_fpath = keras.utils.get_file(
-            origin="https://huggingface.co/divamgupta/stable-diffusion-tensorflow/resolve/main/encoder_newW.h5",
-            file_hash="56a2578423c640746c5e90c0a789b9b11481f47497f817e65b44a1a5538af754",
-        )
+        #encoder_weights_fpath = keras.utils.get_file(
+        #    origin="https://huggingface.co/divamgupta/stable-diffusion-tensorflow/resolve/main/encoder_newW.h5",
+        #    file_hash="56a2578423c640746c5e90c0a789b9b11481f47497f817e65b44a1a5538af754",
+        #)
 
         #diffusion_model.load_weights(diffusion_model_weights_fpath)
         #decoder.load_weights(decoder_weights_fpath)
-        encoder.load_weights(encoder_weights_fpath)
+        #encoder.load_weights(encoder_weights_fpath)
 
     return diffusion_model, decoder, encoder

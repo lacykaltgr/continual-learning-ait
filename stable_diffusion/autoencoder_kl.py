@@ -105,21 +105,22 @@ class Encoder(keras.Sequential):
                 PaddedConv2D(256 , 3 , padding=(0,1), stride=2),
                 
                 ResnetBlock(256,512),
+                AttentionBlock(512), #ideraktam
                 ResnetBlock(512, 512),
-                PaddedConv2D(512 , 3 , padding=(0,1), stride=2),
+                #PaddedConv2D(512, 3, padding=(0,1), stride=2),
                 
-                ResnetBlock(512,512),
-                ResnetBlock(512, 512),
+                #ResnetBlock(512,512),
+                #ResnetBlock(512, 512),
                 
-                ResnetBlock(512, 512),
-                AttentionBlock(512),
-                ResnetBlock(512, 512),
+                #ResnetBlock(512, 512),
+                #AttentionBlock(512),
+                #ResnetBlock(512, 512),
                 
-                keras.layers.GroupNormalization(epsilon=1e-5) ,
+                keras.layers.GroupNormalization(epsilon=1e-5),
                 keras.layers.Activation("swish"),
                 PaddedConv2D(8, 3, padding=1 ),
                 PaddedConv2D(8, 1 ),
-                keras.layers.Lambda(lambda x : x[... , :4] * 0.18215)
+                keras.layers.Lambda(lambda x : x[..., :4] * 0.18215)
             ]
         )
 
