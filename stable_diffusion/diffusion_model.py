@@ -73,7 +73,7 @@ class UNetModel(keras.Model):
             [Downsample(320)],
             [ResBlock(320, 640)], #, Conv2D(640, kernel_size=8, padding="same")],
             [ResBlock(640, 640)], #, Conv2D(640, kernel_size=8, padding="same")],
-            #[Downsample(640)],
+            [Downsample(640)],
             #[ResBlock(640, 1280)], #, Conv2D(1280, kernel_size=8, padding="same")],
             #[ResBlock(1280, 1280)], #, Conv2D(1280, kernel_size=8, padding="same")],
             #[Downsample(1280)],
@@ -91,12 +91,12 @@ class UNetModel(keras.Model):
             #[ResBlock(2560, 1280), Upsample(1280)],
             #[ResBlock(2560, 1280)], #, Conv2D(1280, kernel_size=8, padding="same")],
             #[ResBlock(2560, 1280)], #, Conv2D(1280, kernel_size=8, padding="same")],
-            #[
-            #    ResBlock(1920, 1280),
-            #    #Conv2D(1280, kernel_size=8, padding="same"),
-            #    Upsample(1280),
-            #],
-            [ResBlock(1280, 640)], #, Conv2D(640, kernel_size=8, padding="same")],  # 6
+            [
+                ResBlock(1920, 1280),
+                #Conv2D(1280, kernel_size=8, padding="same"),
+                Upsample(1280),
+            ],
+            [ResBlock(1920, 640)], #, Conv2D(640, kernel_size=8, padding="same")],  # 6
             [ResBlock(1280, 640)], #, Conv2D(640, kernel_size=8, padding="same")],
             [
                 ResBlock(960, 640),
