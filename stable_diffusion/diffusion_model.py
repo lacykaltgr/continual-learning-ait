@@ -96,7 +96,7 @@ class UNetModel(keras.Model):
             #    #Conv2D(1280, kernel_size=8, padding="same"),
             #    Upsample(1280),
             #],
-            [ResBlock(1920, 640)], #, Conv2D(640, kernel_size=8, padding="same")],  # 6
+            [ResBlock(1280, 640)], #, Conv2D(640, kernel_size=8, padding="same")],  # 6
             [ResBlock(1280, 640)], #, Conv2D(640, kernel_size=8, padding="same")],
             [
                 ResBlock(960, 640),
