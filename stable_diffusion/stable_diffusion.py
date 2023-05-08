@@ -35,11 +35,11 @@ class StableDiffusion:
         decoded = ((decoded + 1) / 2) * 255
         return np.clip(decoded, 0, 255).astype("uint8")
 
-    def initialize(self, params, input_latent=None):
+    def initialize(self, params, input_latent=None, batch_size=64):
         timesteps = np.arange(1, params['num_steps']+ 1)
         input_lat_noise_t = timesteps[int(len(timesteps)* params["input_latent_strength"])]
         latent, alphas, alphas_prev = self.get_starting_parameters(
-            timesteps, params["batch_size"], input_latent=input_latent, input_lat_noise_t=input_lat_noise_t
+            timesteps, batch_size, input_latent=input_latent, input_lat_noise_t=input_lat_noise_t
         )
         timesteps = timesteps[: int(len(timesteps)*params["input_latent_strength"])]
         return latent, alphas, alphas_prev, timesteps
