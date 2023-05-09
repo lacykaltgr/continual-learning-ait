@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 from stable_diffusion.layers import PaddedConv2D
+from keras.layers import Conv2D, BatchNormalization, MaxPool2D, Dropout
 
 
 class AttentionBlock(keras.layers.Layer):
@@ -91,9 +92,43 @@ class Decoder(keras.Sequential):
 
 
 class Encoder(keras.Sequential):
-    def __init__(self):
+    def __init__(self, KERNEL_SIZE = (3,3), INPUT_SHAPE = (32,32,3)):
         print("Encoder init")
         super().__init__(
+            [
+                Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+                Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+
+                # Pooling layer
+                MaxPool2D(pool_size=(2, 2)),
+                # Dropout layers
+                Dropout(0.25),
+
+                Conv2D(filters=64, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+                Conv2D(filters=64, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+                MaxPool2D(pool_size=(2, 2)),
+                Dropout(0.25),
+
+                Conv2D(filters=128, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+                Conv2D(filters=128, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+                BatchNormalization(),
+                MaxPool2D(pool_size=(2, 2)),
+
+                keras.layers.GroupNormalization(epsilon=1e-5),
+                keras.layers.Activation("swish"),
+                PaddedConv2D(3, 3, padding=1),
+                PaddedConv2D(16, 3, padding=1 ),
+                PaddedConv2D(8, 1)
+            ]
+        )
+
+
+    '''
             [
                 PaddedConv2D(128, 3, padding=1 ),
                 ResnetBlock(128,128),
@@ -120,8 +155,6 @@ class Encoder(keras.Sequential):
                 PaddedConv2D(8, 3, padding=1 ),
                 PaddedConv2D(8, 1 ),
                 keras.layers.Lambda(lambda x : x[..., :4] * 0.18215)
-            ]
-        )
-
-
+            ]    
+    '''
 
