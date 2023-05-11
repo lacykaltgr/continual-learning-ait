@@ -1,57 +1,48 @@
 import keras
-import keras.layers as layer
-import tensorflow as tf
+from keras.layers import Conv2D, MaxPool2D, Dropout, BatchNormalization, GroupNormalization, Activation, ZeroPadding2D, Dense ,Flatten
 
 
-class GatedDense(tf.keras.layers.Layer):
-    def __init__(self, output_size, activation=None):
-        super(GatedDense, self).__init__()
-        self.activation = activation
-        self.h = tf.keras.layers.Dense(output_size)
-        self.g = tf.keras.layers.Dense(output_size, activation="sigmoid")
+class Encoder(keras.Sequential):
+    def __init__(self, KERNEL_SIZE = (3, 3), INPUT_SHAPE = (32, 32, 3)):
+        super().__init__(
+            Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            MaxPool2D(pool_size=(2, 2)),
+            Dropout(0.25),
 
-    def call(self, x):
-        h = self.h(x)
-        if self.activation is not None:
-            h = self.activation(h)
-        g = self.g(x)
-        return h * g
+            Conv2D(filters=64, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            Conv2D(filters=64, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            MaxPool2D(pool_size=(2, 2)),
+            Dropout(0.25),
+
+            Conv2D(filters=128, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            Conv2D(filters=128, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
+            BatchNormalization(),
+            MaxPool2D(pool_size=(2, 2)),
+
+            GroupNormalization(epsilon=1e-5),
+            Activation("swish"),
+            ZeroPadding2D((1, 1)),
+            Conv2D(16, 3, strides=(1, 1)),
+            ZeroPadding2D((1, 1)),
+            Conv2D(8, 1, strides=(1, 1))
+        )
 
 
-class classifier(keras.Model):
-    def __init__(self, params):
-        print("Classifier init")
-        super(classifier, self).__init__()
 
-        K = params["cls_hiddens"]
-        n_classes = params["n_classes"]
 
-        activation = layer.ReLU()
-        self.layer = keras.Sequential([
-            layer.Flatten(),
-            GatedDense(K, activation=activation),
-            layer.Dropout(0.2),
-            GatedDense(K, activation=None),
-            layer.Dense(n_classes, activation='softmax')
-        ])
-        self.layer.build(input_shape=(None, 4, 4, 4))
+class Classifier(keras.Sequential):
+    def __init__(self):
+        super().__init__(
+            Flatten(),
+            Dropout(0.2),
+            Dense(128, activation='relu'),
+            Dropout(0.25),
+            Dense(10, activation='softmax')
+        )
 
-        # get gradient dimension:
-        self.grad_dims = self.count_params()
-
-    def call(self, x):
-        out = self.layer(x)
-        return out
-
-    def count_params(self):
-        num_params = []
-        for layer in self.layers:
-            if layer.trainable:
-                layer_params = []
-                if hasattr(layer, "layers"): # check if the layer has sub-layers
-                    sub_layer_params = layer.count_params() # recursively count the params of sub-layers
-                    layer_params.append(sub_layer_params)  # add the params of sub-layers to the layer params
-                else:
-                    layer_params.append(layer.count_params()) # count the params of the layer
-                num_params.append(layer_params)
-        return num_params
