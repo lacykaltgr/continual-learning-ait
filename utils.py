@@ -8,6 +8,13 @@ def apply_seq(x: object, layers: object) -> object:
         x = l(x)
     return x
 
+def get_one_hot_predictions(mem_pred):
+    maximum = np.argmax(mem_pred, axis=1)
+    num_classes = mem_pred.shape[1]
+    mem_true = np.zeros_like(mem_pred)
+    mem_true[np.arange(len(maximum)), maximum] = 1
+    return mem_true
+
 
 ''' For MIR '''
 
