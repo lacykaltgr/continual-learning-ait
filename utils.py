@@ -2,6 +2,13 @@ import tensorflow as tf
 import numpy as np
 from collections import OrderedDict as OD
 
+'''FOR DIFFUSION'''
+def apply_seq(x: object, layers: object) -> object:
+    for l in layers:
+        x = l(x)
+    return x
+
+
 ''' For MIR '''
 
 def get_next_step_cls(
