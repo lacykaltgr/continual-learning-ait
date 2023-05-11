@@ -42,10 +42,9 @@ class ResBlock(keras.layers.Layer):
         return ret
 
 
-
-class UNetModel(keras.Model):
+class Generator(keras.Model):
     def __init__(self, img_height=32, img_width=32, ntype=tf.float32):
-        print("UNetModel init")
+        print("Generator init")
         super().__init__()
         self.img_height = img_height
         self.img_width = img_width
@@ -138,9 +137,7 @@ class UNetModel(keras.Model):
 
         return apply_seq(x, self.out)
 
-
     ''' Other functions '''
-
     def initialize(self, params, input_latent=None, batch_size=64):
         timesteps = np.arange(1, params['num_steps'] + 1) #1, 2, 3, ..., num_steps
         input_lat_noise_t = timesteps[int(len(timesteps) * params["input_latent_strength"])]
@@ -175,7 +172,6 @@ class UNetModel(keras.Model):
         args = np.array(timesteps) * freqs
         embedding = np.concatenate([np.cos(args), np.sin(args)])
         return tf.convert_to_tensor(embedding.reshape(1, -1), dtype=self.ntype)
-
 
     def add_noise(self, x, t, noise=None):
         if len(x.shape) == 3:
