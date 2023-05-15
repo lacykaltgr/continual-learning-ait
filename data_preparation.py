@@ -70,7 +70,7 @@ def load_dataset(
         X_task_test = []
         y_task_test = []
 
-        start_class = n_classes_first_task + (i-1) * n_classes_other_task + 1 if i != 0 else 1
+        start_class = n_classes_first_task + (i-1) * n_classes_other_task if i != 0 else 0
         end_class = n_classes_first_task + i * n_classes_other_task
 
         for j in range(X_train.shape[0]):
