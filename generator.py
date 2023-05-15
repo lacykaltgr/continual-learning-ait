@@ -1,198 +1,163 @@
-import tensorflow as tf
-from tensorflow import keras
+import torch
+from guided_diffusion.script_util import create_classifier
+import os
 import numpy as np
-import math
+from utils import vpsde
+import pickle
 
+class Generator:
+    def __init__(self, img_resolution=32, device='cuda:0', encoder_path=None, scorenet_path=None):
+        self.image_resolution = img_resolution
+        self.device = device
+        self.vpsde = vpsde()
+        self.discriminator = self.load_discriminator(None)
+        self.encoder = self.load_encoder(encoder_path)
+        self.net = self.load_score_network(scorenet_f=scorenet_path)
 
-from keras.layers import Conv2D, GroupNormalization,Dense, Conv2DTranspose
+    def pipeline(self):
+        def evaluate(perturbed_inputs, timesteps=None, condition=None):
+            adm_features = self.encoder(perturbed_inputs, timesteps=timesteps, feature=True)
+            prediction = self.discriminator(adm_features, timesteps, sigmoid=True, condition=condition).view(-1)
+            return prediction
+        return evaluate
 
-from utils import apply_seq
-from constants import _ALPHAS_CUMPROD
-
-
-class ResBlock(keras.layers.Layer):
-    def __init__(self, channels, out_channels):
-        super().__init__()
-        self.in_layers = [
-            GroupNormalization(epsilon=1e-5),
-            keras.activations.swish,
-            Conv2D(out_channels, 3, strides=(1, 1), padding='same'),
-        ]
-        self.emb_layers = [
-            keras.activations.swish,
-            Dense(out_channels),
-        ]
-        self.out_layers = [
-            GroupNormalization(epsilon=1e-5),
-            keras.activations.swish,
-            Conv2D(out_channels, 3, strides=(1, 1), padding='same'),
-        ]
-        self.skip_connection = (
-            Conv2D(out_channels, 3, strides=(1, 1), padding='same') if channels != out_channels else lambda x: x
-        )
-
-    def call(self, inputs):
-        x, emb = inputs
-        h = apply_seq(x, self.in_layers)
-        emb_out = apply_seq(emb, self.emb_layers)
-        h = h + emb_out[:, None, None]
-        h = apply_seq(h, self.out_layers)
-        skip_x = self.skip_connection(x)
-        ret = skip_x + h
-        return ret
-
-
-class Generator(keras.Model):
-    def __init__(self, img_height=32, img_width=32, ntype=tf.float32):
-        print("Generator init")
-        super().__init__()
-        self.img_height = img_height
-        self.img_width = img_width
-        self.ntype = tf.float32
-
-        self.time_embed = [
-            keras.layers.Dense(128),
-            keras.activations.swish,
-            keras.layers.Dense(128),
-        ]
-        self.input_blocks = [
-            [Conv2D( 32, 3, strides=(1, 1), padding='same')],
-
-            [ResBlock(32, 32)],
-            [ResBlock(32, 32)],
-            [Conv2D(64, 3, strides=(2, 2), padding='same'),], #downsample
-
-            [ResBlock(32, 64)],
-            [ResBlock(64, 64)],
-            [Conv2D(128, 3, strides=(2, 2), padding='same'),], #downsample
-
-            [ResBlock(64, 128)],
-            [ResBlock(128, 128)],
-            [Conv2D(128, 3, strides=(2, 2), padding='same')], #downsample
-
-            [ResBlock(128, 128)],
-            [ResBlock(128, 128)],
-        ]
-        self.middle_block = [
-            ResBlock(128, 128),
-            ResBlock(128, 128),
-        ]
-        self.output_blocks = [
-            [ResBlock(256, 128)],
-            [ResBlock(256, 128)],
-
-            [
-                ResBlock(256, 128),
-                Conv2DTranspose(128, 2, strides=(2,2)),
-                Conv2D(128, 3, strides=(1,1), padding='same')
-            ],
-            [ResBlock(256, 128)],
-            [ResBlock(256, 128)],
-
-            [
-                ResBlock(192, 128),
-                Conv2DTranspose(128, 2, strides=(2,2)),
-                Conv2D(64, 2, strides=(1,1), padding='valid')
-            ],
-            [ResBlock(192, 64)],
-            [ResBlock(128, 64)],
-
-            [
-                ResBlock(96, 64),
-                Conv2DTranspose(64, 3, strides=(2,2)),
-                Conv2D(64, 2, strides=(1,1), padding='valid')
-            ],
-            [ResBlock(96, 32)],
-            [ResBlock(64, 32)],
-
-            [ResBlock(64, 32)],
-        ]
-        self.out = [
-            GroupNormalization(epsilon=1e-5),
-            keras.activations.swish,
-            Conv2D(8, 3, strides=(1,1), padding='same'),
-        ]
-
-    def call(self, inputs):
-        x, t_emb = inputs
-        emb = apply_seq(t_emb, self.time_embed)
-
-        def apply(x, layer):
-            return layer([x, emb]) if isinstance(layer, ResBlock) else layer(x)
-
-        saved_inputs = []
-        for b in self.input_blocks:
-            for layer in b:
-                x = apply(x, layer)
-            saved_inputs.append(x)
-
-        for layer in self.middle_block:
-            x = apply(x, layer)
-
-        for b in self.output_blocks:
-            skip = saved_inputs.pop()
-            x = tf.concat([x, skip], axis=-1)
-            for layer in b:
-                x = apply(x, layer)
-
-        return apply_seq(x, self.out)
-
-    ''' Other functions '''
-    def initialize(self, params, input_latent=None, batch_size=64):
-        timesteps = np.arange(1, params['num_steps'] + 1) #1, 2, 3, ..., num_steps
-        input_lat_noise_t = timesteps[int(len(timesteps) * params["input_latent_strength"])]
-
-        # latent: (batch_size, 32, 32, 8), alphas: (batch_size, num_steps), alphas_prev: (batch_size, num_steps)
-        latent, alphas, alphas_prev = self.get_starting_parameters(
-            timesteps, batch_size, input_latent=input_latent, input_lat_noise_t=input_lat_noise_t
-        )
-        return latent, alphas, alphas_prev, timesteps
-
-    def get_x_prev(self, x, e_t, a_t, a_prev, temperature):
-        sigma_t = 0
-        sqrt_one_minus_at = math.sqrt(1 - a_t)
-        pred_x0 = x - sqrt_one_minus_at * e_t / math.sqrt(a_t)
-
-        # Direction pointing to x_t
-        dir_xt = math.sqrt(1.0 - a_prev - sigma_t**2) * e_t
-        #noise = sigma_t * tf.random.normal(x.shape, seed=seed) * temperature
-        x_prev = math.sqrt(a_prev) * pred_x0 + dir_xt
-        return x_prev
-
-    def get_model_output(self, latent, timestep, batch_size):
-        timesteps = tf.convert_to_tensor([timestep], dtype=self.ntype)
-        t_emb = self.timestep_embedding(timesteps)
-        t_emb = tf.repeat(t_emb, repeats=batch_size, axis=0)
-        latent = self.call([latent, t_emb])
-        return latent
-
-    def timestep_embedding(self, timesteps, dim=320, max_period=10000):
-        half = dim // 2
-        freqs = np.exp(-math.log(max_period) * np.arange(0, half, dtype="float32") / half)
-        args = np.array(timesteps) * freqs
-        embedding = np.concatenate([np.cos(args), np.sin(args)])
-        return tf.convert_to_tensor(embedding.reshape(1, -1), dtype=self.ntype)
-
-    def add_noise(self, x, t, noise=None):
-        if len(x.shape) == 3:
-            x = tf.expand_dims(x, axis=0)
-        batch_size, w, h, c = x.shape[0], x.shape[1], x.shape[2], x.shape[3]
-        if noise is None:
-            noise = tf.random.normal((batch_size, w, h, c), dtype=tf.float32)
-        sqrt_alpha_prod = tf.cast(_ALPHAS_CUMPROD[t] ** 0.5, tf.float32)
-        sqrt_one_minus_alpha_prod = (1 - _ALPHAS_CUMPROD[t]) ** 0.5
-
-        return sqrt_alpha_prod * x + sqrt_one_minus_alpha_prod * noise
-
-    def get_starting_parameters(self, timesteps, batch_size,  input_latent=None, input_lat_noise_t=None):
-        n_h = self.img_height // 8
-        n_w = self.img_width // 8
-        alphas = [_ALPHAS_CUMPROD[t] for t in timesteps]
-        alphas_prev = [1.0] + alphas[:-1]
-        if input_latent is None:
-            latent = tf.random.normal((batch_size, n_h, n_w, 8))
+    def get_grad_log_ratio(self, unnormalized_input, std_wve_t, time_min, time_max, class_labels, log=False):
+        mean_vp_tau, tau = self.vpsde.transform_unnormalized_wve_to_normalized_vp(std_wve_t) ## VP pretrained classifier
+        if tau.min() > time_max or tau.min() < time_min:
+            if log:
+                return torch.zeros_like(unnormalized_input), 10000000. * torch.ones(unnormalized_input.shape[0], device=unnormalized_input.device)
+            return torch.zeros_like(unnormalized_input)
         else:
-            input_latent = tf.cast(input_latent, self.ntype)
-            #latent = tf.repeat(input_latent , batch_size , axis=0)
-            latent = self.add_noise(input_latent, input_lat_noise_t)
-        return latent, alphas, alphas_prev
+            input = mean_vp_tau[:,None,None,None] * unnormalized_input
+        with torch.enable_grad():
+            x_ = input.float().clone().detach().requires_grad_()
+            tau = torch.ones(input.shape[0], device=tau.device) * tau
+            log_ratio = self.get_log_ratio(x_, tau, class_labels)
+            discriminator_guidance_score = torch.autograd.grad(outputs=log_ratio.sum(), inputs=x_, retain_graph=False)[0]
+            discriminator_guidance_score *= -((std_wve_t[:,None,None,None] ** 2) * mean_vp_tau[:,None,None,None])
+        if log:
+            return discriminator_guidance_score, log_ratio
+        return discriminator_guidance_score
+
+    def get_log_ratio(self, input, time, class_labels):
+        logits = self.pipeline()(input, timesteps=time, condition=class_labels)
+        prediction = torch.clip(logits, 1e-5, 1. - 1e-5)
+        log_ratio = torch.log(prediction / (1. - prediction))
+        return log_ratio
+
+    def load_encoder(self, ckpt_path, eval=True):
+        encoder_args = dict(
+            image_size=self.image_resolution,
+            classifier_use_fp16=False,
+            classifier_width=128,
+            classifier_depth=4 if self.image_resolution in [64, 32] else 2,
+            classifier_attention_resolutions="32,16,8",
+            classifier_use_scale_shift_norm=True,
+            classifier_resblock_updown=True,
+            classifier_pool="attention",
+            out_channels=1000,
+        )
+        encoder = create_classifier(**encoder_args)
+        encoder.to(self.device)
+        if ckpt_path is not None:
+            ckpt_path = os.getcwd() + ckpt_path
+            encoder_state = torch.load(ckpt_path, map_location="cpu")
+            encoder.load_state_dict(encoder_state)
+        if eval:
+            encoder.eval()
+        return encoder
+
+    def load_discriminator(self, ckpt_path, eval=False, channel=512):
+        discriminator_args = dict(
+            image_size=8,
+            classifier_use_fp16=False,
+            classifier_width=128,
+            classifier_depth=2,
+            classifier_attention_resolutions="32,16,8",
+            classifier_use_scale_shift_norm=True,
+            classifier_resblock_updown=True,
+            classifier_pool="attention",
+            out_channels=1,
+            in_channels=channel
+        )
+        discriminator = create_classifier(**discriminator_args)
+        discriminator.to(self.device)
+        if ckpt_path is not None:
+            ckpt_path = os.getcwd() + ckpt_path
+            discriminator_state = torch.load(ckpt_path, map_location="cpu")
+            discriminator.load_state_dict(discriminator_state)
+        if eval:
+            discriminator.eval()
+        return discriminator
+
+    def load_score_network(self, scorenet_f=None):
+        with open(scorenet_f, 'rb') as f:
+            scorenet = pickle.load(f)['ema'].to(self.device)
+        return scorenet
+
+    def sample(
+            self, boosting, time_min, time_max, dg_weight_1st_order, dg_weight_2nd_order,
+            latents, class_labels=None, num_steps=18, sigma_min=0.002, sigma_max=80, rho=7,
+            S_churn=0, S_min=0, S_max=float('inf'), S_noise=1,
+    ):
+        # Adjust noise levels based on what's supported by the network.
+        sigma_min = max(sigma_min, self.net.sigma_min)
+        sigma_max = min(sigma_max, self.net.sigma_max)
+
+        # Time step discretization.
+        step_indices = torch.arange(num_steps, dtype=torch.float64, device=latents.device)
+        t_steps = (sigma_max ** (1 / rho) + step_indices / (num_steps - 1) * (sigma_min ** (1 / rho) - sigma_max ** (1 / rho))) ** rho
+        t_steps = torch.cat([self.net.round_sigma(t_steps), torch.zeros_like(t_steps[:1])]) # t_N = 0
+
+        # Settings for boosting
+        S_churn_manual = 4.
+        S_noise_manual = 1.000
+        period = 5
+        period_weight = 2
+        log_ratio = torch.tensor([np.inf] * latents.shape[0], device=latents.device)
+        S_churn_vec = torch.tensor([S_churn] * latents.shape[0], device=latents.device)
+        S_churn_max = torch.tensor([np.sqrt(2) - 1] * latents.shape[0], device=latents.device)
+        S_noise_vec = torch.tensor([S_noise] * latents.shape[0], device=latents.device)
+
+        # Main sampling loop.
+        x_next = latents.to(torch.float64) * t_steps[0]
+        for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
+            x_cur = x_next
+            S_churn_vec_ = S_churn_vec.clone()
+            S_noise_vec_ = S_noise_vec.clone()
+
+            if i % period == 0:
+                if boosting:
+                    S_churn_vec_[log_ratio < 0.] = S_churn_manual
+                    S_noise_vec_[log_ratio < 0.] = S_noise_manual
+
+            # Increase noise temporarily.
+            # gamma = min(S_churn / num_steps, np.sqrt(2) - 1) if S_min <= t_cur <= S_max else 0
+            gamma_vec = torch.minimum(S_churn_vec_ / num_steps, S_churn_max) if S_min <= t_cur <= S_max else torch.zeros_like(S_churn_vec_)
+            t_hat = self.net.round_sigma(t_cur + gamma_vec * t_cur)
+            x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt()[:, None, None, None] * S_noise_vec_[:, None, None,None] * torch.randn_like(x_cur)
+            #x_hat = x_cur + (t_hat ** 2 - t_cur ** 2).sqrt() * S_noise * randn_like(x_cur)
+
+            # Euler step.
+            denoised = self.net(x_hat, t_hat, class_labels).to(torch.float64)
+            d_cur = (x_hat - denoised) / t_hat[:, None, None, None]
+            # DG correction
+            if dg_weight_1st_order != 0.:
+                discriminator_guidance, log_ratio = self.get_grad_log_ratio(x_hat, t_hat, time_min, time_max, class_labels, log=True)
+                if boosting:
+                    if i % period_weight == 0:
+                        discriminator_guidance[log_ratio < 0.] *= 2.
+                d_cur += dg_weight_1st_order * (discriminator_guidance / t_hat[:, None, None, None])
+            x_next = x_hat + (t_next - t_hat)[:, None, None, None] * d_cur
+
+            # Apply 2nd order correction.
+            if i < num_steps - 1:
+                denoised = self.net(x_next, t_next, class_labels).to(torch.float64)
+                d_prime = (x_next - denoised) / t_next
+                ##DG correction
+                if dg_weight_2nd_order != 0.:
+                    discriminator_guidance = self.get_grad_log_ratio(x_next, t_next, time_min, time_max, class_labels, log=False)
+                    d_prime += dg_weight_2nd_order * (discriminator_guidance / t_next)
+                x_next = x_hat + (t_next - t_hat)[:, None, None, None] * (0.5 * d_cur + 0.5 * d_prime)
+
+        return x_next
