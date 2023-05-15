@@ -3,15 +3,16 @@ from guided_diffusion.script_util import create_classifier
 import os
 import numpy as np
 from utils import vpsde
+import pickle
 
 class Generator:
-    def __init__(self, img_resolution=32, device='cuda:0', encoder_path=None):
+    def __init__(self, img_resolution=32, device='cuda:0', encoder_path=None, scorenet_path=None):
         self.image_resolution = img_resolution
         self.device = device
         self.vpsde = vpsde()
         self.discriminator = self.load_discriminator(None)
         self.encoder = self.load_encoder(encoder_path)
-        self.net = self.load_score_network()
+        self.net = self.load_score_network(scorenet_f=scorenet_path)
 
     def pipeline(self):
         def evaluate(perturbed_inputs, timesteps=None, condition=None):
@@ -89,12 +90,10 @@ class Generator:
             discriminator.eval()
         return discriminator
 
-    def set_score_network(self, score_network):
-        self.net = score_network
-    def load_score_network(self):
-        #with open('/Users/laszlofreund/PycharmProjects/continual-learning-ait#/checkpoints/edm-cifar10-32x32-cond-vp.pkl', 'rb') as f:
-        #  scorenet = pickle.load(f)['ema'].to("cpu")
-        return None
+    def load_score_network(self, scorenet_f=None):
+        with open(scorenet_f, 'rb') as f:
+            scorenet = pickle.load(f)['ema'].to(self.device)
+        return scorenet
 
     def sample(
             self, boosting, time_min, time_max, dg_weight_1st_order, dg_weight_2nd_order,

@@ -64,13 +64,13 @@ class vpsde():
 def get_next_step_cls(
         current_classifier,
         virtual_classifier,
-        latent,
+        sample,
         target
 ):
     virtual_classifier.set_weights(current_classifier.get_weights())
-    virtual_classifier.build(input_shape=(None, *latent.shape[1:]))
+    virtual_classifier.build(input_shape=(None, *sample.shape[1:]))
     virtual_classifier.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    virtual_classifier.fit(latent, target, latent.shape[0], epochs=1, verbose=0)
+    virtual_classifier.fit(sample, target, sample.shape[0], epochs=1, verbose=0)
     return virtual_classifier
 
 def get_one_hot_predictions(mem_pred):
