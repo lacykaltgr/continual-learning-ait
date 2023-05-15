@@ -3,7 +3,7 @@ from keras.layers import Conv2D, MaxPool2D, Dropout, BatchNormalization, GroupNo
 
 class Classifier(keras.Sequential):
     def __init__(self, KERNEL_SIZE = (3, 3), INPUT_SHAPE = (32, 32, 3)):
-        super().__init__(
+        super().__init__([
             Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
             BatchNormalization(),
             Conv2D(filters=32, kernel_size=KERNEL_SIZE, input_shape=INPUT_SHAPE, activation='relu', padding='same'),
@@ -36,5 +36,5 @@ class Classifier(keras.Sequential):
             Dense(128, activation='relu'),
             Dropout(0.25),
             Dense(10, activation='softmax')
-        )
+        ])
 
