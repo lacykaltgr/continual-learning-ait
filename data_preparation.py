@@ -1,5 +1,6 @@
 import tensorflow as tf
-
+import torch.utils.data as data
+import torchvision.transforms as transforms
 
 class CLDataLoader(object):
     def __init__(self, datasets_per_task, batch_size, train=True):
@@ -16,6 +17,24 @@ class CLDataLoader(object):
 
     def __len__(self):
         return len(self.loaders)
+
+
+class RealFakeConditionalDataset(data.Dataset):
+    def __init__(self, x_np, y_np, cond_np, transform=transforms.ToTensor()):
+        super(RealFakeConditionalDataset, self).__init__()
+
+        self.x = x_np
+        self.y = y_np
+        self.cond = cond_np
+        self.transform = transform
+
+    def __getitem__(self, index):
+        return self.transform(self.x[index]), self.y[index], self.cond[index]
+
+    def __len__(self):
+        return len(self.x)
+
+
 
 
 def load_dataset(
