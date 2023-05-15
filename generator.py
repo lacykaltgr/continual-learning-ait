@@ -6,12 +6,12 @@ from utils import vpsde
 
 class Generator:
     def __init__(self, img_resolution=32, device='cuda:0', encoder_path=None):
-        self.discriminator = self.load_discriminator(None)
-        self.encoder = self.load_encoder(encoder_path)
-        self.net = self.load_score_network()
         self.image_resolution = img_resolution
         self.device = device
         self.vpsde = vpsde()
+        self.discriminator = self.load_discriminator(None)
+        self.encoder = self.load_encoder(encoder_path)
+        self.net = self.load_score_network()
 
     def pipeline(self):
         def evaluate(perturbed_inputs, timesteps=None, condition=None):
