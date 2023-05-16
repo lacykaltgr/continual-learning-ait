@@ -24,11 +24,6 @@ class ClassifierDataset(tf.data.Dataset):
         return self.num_samples
 
 
-class ClassifierDataLoader(tf.data.Dataset):
-    def __init__(self, x_np, y_np, batch_size=256, shuffle=True):
-        dataset = ClassifierDataset(x_np, y_np, batch_size)
-        super(ClassifierDataLoader, self).__init__(dataset._variant_tensor)
-
 
 '''FOR DISCRIMINATOR'''
 
