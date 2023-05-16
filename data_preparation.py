@@ -7,22 +7,26 @@ import numpy as np
 '''FOR CLASSIFICATION'''
 
 
-class ClassifierDataset(tf.data.Dataset):
+class ClassifierDataset:
     def __init__(self, x_np, y_np, batch_size=256):
         self.x = x_np
         self.y = y_np
         self.num_samples = len(x_np)
 
-        dataset = tf.data.Dataset.from_tensor_slices((x_np, y_np)).shuffle(self.num_samples).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+        def generator():
+            for i in range(self.num_samples):
+                yield self.x[i], self.y[i]
 
-        super(ClassifierDataset, self).__init__(dataset._variant_tensor)
+        dataset = tf.data.Dataset.from_generator(generator, output_signature=(tf.float32, tf.int32))
+        dataset = dataset.shuffle(self.num_samples).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
+        self.dataset = dataset
 
     def __getitem__(self, index):
         return self.x[index], self.y[index]
 
     def __len__(self):
         return self.num_samples
-
 
 
 '''FOR DISCRIMINATOR'''
