@@ -72,12 +72,13 @@ def get_next_step_cls(
         current_classifier,
         virtual_classifier,
         sample,
-        target
+        target,
+        batch_size=256,
 ):
     virtual_classifier.set_weights(current_classifier.get_weights())
     virtual_classifier.build(input_shape=(None, *sample.shape[1:]))
-    virtual_classifier.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-    virtual_classifier.fit(sample, target, sample.shape[0], epochs=1, verbose=0)
+    virtual_classifier.compile(optimizer="adam", loss="categorical_crossentropy")
+    virtual_classifier.fit(sample, target, batch_size=batch_size, epochs=1, verbose=0)
     return virtual_classifier
 
 def get_one_hot_predictions(mem_pred):
