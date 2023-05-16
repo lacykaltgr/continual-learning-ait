@@ -2,21 +2,34 @@ import tensorflow as tf
 import torch.utils.data as data
 import torchvision.transforms as transforms
 
-class CLDataLoader(object):
-    def __init__(self, datasets_per_task, batch_size, train=True):
-        bs = batch_size if train else 64
 
-        self.datasets = datasets_per_task
-        self.loaders = [
-            tf.data.Dataset.from_tensor_slices(x).shuffle(len(x)).batch(bs).prefetch(tf.data.AUTOTUNE)
-            for x in self.datasets
-        ]
+'''FOR CLASSIFICATION'''
 
-    def __getitem__(self, idx):
-        return self.loaders[idx]
+
+class ClassifierDataset(tf.data.Dataset):
+    def __init__(self, x_np, y_np, batch_size=256):
+        self.x = x_np
+        self.y = y_np
+        self.num_samples = len(x_np)
+
+        dataset = tf.data.Dataset.from_tensor_slices((x_np, y_np)).shuffle(self.num_samples).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+
+        super(ClassifierDataset, self).__init__(dataset._variant_tensor)
+
+    def __getitem__(self, index):
+        return self.x[index], self.y[index]
 
     def __len__(self):
-        return len(self.loaders)
+        return self.num_samples
+
+
+class ClassifierDataLoader(tf.data.Dataset):
+    def __init__(self, x_np, y_np, batch_size=256, shuffle=True):
+        dataset = ClassifierDataset(x_np, y_np, batch_size)
+        super(ClassifierDataLoader, self).__init__(dataset._variant_tensor)
+
+
+'''FOR DISCRIMINATOR'''
 
 
 class RealFakeConditionalDataset(data.Dataset):
@@ -35,6 +48,31 @@ class RealFakeConditionalDataset(data.Dataset):
         return len(self.x)
 
 
+class RealFakeConditionalDataLoader(data.DataLoader):
+
+    def __init__(self, x_np, y_np, cond_np, batch_size=256, shuffle=True, transform=transforms.ToTensor()):
+        dataset = RealFakeConditionalDataset(x_np, y_np, cond_np, transform)
+        super(RealFakeConditionalDataLoader, self).__init__(dataset, batch_size=batch_size, shuffle=shuffle)
+
+
+'''GENERAL DATA LOADER FOR CONTINUAL LEARNING'''
+
+
+class CLDataLoader(object):
+    def __init__(self, datasets_per_task, batch_size, train=True):
+        bs = batch_size if train else 64
+
+        self.datasets = datasets_per_task
+        self.loaders = [
+            tf.data.Dataset.from_tensor_slices(x).shuffle(len(x)).batch(bs).prefetch(tf.data.AUTOTUNE)
+            for x in self.datasets
+        ]
+
+    def __getitem__(self, idx):
+        return self.loaders[idx]
+
+    def __len__(self):
+        return len(self.loaders)
 
 
 def load_dataset(
