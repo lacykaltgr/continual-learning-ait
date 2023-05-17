@@ -43,8 +43,7 @@ This repository contains the following files:
 
 # The architecture
 The architecture utilizes the Generative Replay based MIR(Maximally Interferred Retrival) idea and a modified Stable Diffusion model.
-![img.png](img.png)
-
+![continual.png](continual.png)
 
 # The team
 Székely Anna,
