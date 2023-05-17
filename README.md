@@ -17,8 +17,8 @@ The   engineering principles that might lead to better performance could be free
 introducing memory, introducing replay (via a recurrent layer), introducing
 inductive biases, applying meta-learning, and so on.
 
-Among these, we investigated generative replay using a retrieval algorithm called Maximally Interfered Retrieval (MIR).
-We implemented generative replay using a guided diffusion model.
+Among these, we investigated generative replay using a retrieval algorithm called [Maximally Interfered Retrieval (MIR)](https://github.com/optimass/Maximally_Interfered_Retrieval/tree/master).
+We implemented generative replay using a [guided diffusion](https://github.com/alsdudrla10/DG/tree/main) model.
 
 Due to time and resource constraints, the model does not fully meet the requirements of complete online continual learning, as we utilized a partially pretrained generative architecture. However, we propose that with further advancements, it could be made fully online through just the expansion of the model.
 
